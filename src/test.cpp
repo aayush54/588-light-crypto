@@ -1,6 +1,5 @@
 #include <iostream>
 #include <vector>
-#include <string_view>
 extern "C"{                 // we need this otherwise it can't find the functions
 #include "crypto_aead.h"
 }
