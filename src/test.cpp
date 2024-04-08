@@ -2,7 +2,13 @@
 #include <vector>
 extern "C"{                 // we need this otherwise it can't find the functions
 #include "crypto_aead.h"
+#include <openssl/evp.h>
+#include <openssl/aes.h>
+#include <openssl/err.h>
 }
+
+
+
 #include <api.h>
 #include <vector>
 #include <array>
@@ -54,6 +60,10 @@ std::string ascon_decrypt(const std::string& encrypted, const std::string& assoc
 }
 
 int main() {
+
+    // openssl stuff that needs to happen before you do anything
+    OpenSSL_add_all_algorithms();
+    ERR_load_crypto_strings();
 
     std::string associatedData{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
     std::array<unsigned char, CRYPTO_NPUBBYTES> nonce{ 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
