@@ -71,7 +71,11 @@ void ssl_handleErrors(void)
     abort();
 }
 
-std::string ssl_encrypt(const std::string_view plaintext, const std::string_view associatedData, const std::array<unsigned char, CRYPTO_KEYBYTES>& key, const std::array<unsigned char, CRYPTO_KEYBYTES>& initializationVector) {
+struct ssl_encrypt_result {
+    std::array<unsigned char, 16> tag;
+    std::string cipherText;
+};
+ssl_encrypt_result ssl_encrypt(const std::string_view plaintext, const std::string_view associatedData, const std::array<unsigned char, CRYPTO_KEYBYTES>& key, const std::array<unsigned char, CRYPTO_KEYBYTES>& initializationVector) {
 
     constexpr auto ssl_encrypt_impl = [](const unsigned char* plaintext, size_t plaintext_len, const unsigned char* aad,
         size_t aad_len, const unsigned char* key, const unsigned char* iv,
@@ -130,81 +134,91 @@ std::string ssl_encrypt(const std::string_view plaintext, const std::string_view
             return ciphertext_len;
         };
 
-    std::array<unsigned char, 16> tag; // memory for the tag
-    std::string encrypted;
-    encrypted.resize(plaintext.size() * 2);
+    ssl_encrypt_result result;
+    result.cipherText.resize(plaintext.size() * 2);
 
-    auto length = ssl_encrypt_impl(cuc_str(plaintext.data()), plaintext.size(), cuc_str(associatedData.data()), associatedData.size(), key.data(), initializationVector.data(), uc_str(encrypted.data()), tag.data());
+    auto length = ssl_encrypt_impl(cuc_str(plaintext.data()), plaintext.size(), cuc_str(associatedData.data()), associatedData.size(), key.data(), initializationVector.data(), uc_str(result.cipherText.data()), result.tag.data());
 
-    encrypted.resize(length);
+    result.cipherText.resize(length);
 
-    return encrypted;
+    return result;
 }
 
-int ssl_decrypt(unsigned char* ciphertext, int ciphertext_len, const unsigned char* aad,
-    int aad_len, unsigned char* tag, unsigned char* key, unsigned char* iv,
-    unsigned char* plaintext)
-{
-    EVP_CIPHER_CTX* ctx = NULL;
-    int len = 0, plaintext_len = 0, ret;
+std::string ssl_decrypt(const std::string_view ciphertext, const std::string_view associatedData, const std::array<unsigned char, CRYPTO_KEYBYTES>& key, const std::array<unsigned char, CRYPTO_KEYBYTES>& initializationVector, const std::array<unsigned char, 16>& tag) {
 
-    /* Create and initialise the context */
-    if (!(ctx = EVP_CIPHER_CTX_new())) ssl_handleErrors();
+    constexpr auto ssl_decrypt_impl = [](const unsigned char* ciphertext, size_t ciphertext_len, const unsigned char* aad,
+        size_t aad_len, const unsigned char* tag, const unsigned char* key, const unsigned char* iv,
+        unsigned char* plaintext) -> int
+        {
+            EVP_CIPHER_CTX* ctx = NULL;
+            int len = 0, plaintext_len = 0, ret;
 
-    /* Initialise the decryption operation. */
-    if (!EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), NULL, NULL, NULL))
-        ssl_handleErrors();
+            /* Create and initialise the context */
+            if (!(ctx = EVP_CIPHER_CTX_new())) ssl_handleErrors();
 
-    /* Set IV length. Not necessary if this is 12 bytes (96 bits) */
-    if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL))
-        ssl_handleErrors();
+            /* Initialise the decryption operation. */
+            if (!EVP_DecryptInit_ex(ctx, EVP_aes_128_gcm(), NULL, NULL, NULL))
+                ssl_handleErrors();
 
-    /* Initialise key and IV */
-    if (!EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv)) ssl_handleErrors();
+            /* Set IV length. Not necessary if this is 12 bytes (96 bits) */
+            if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, 16, NULL))
+                ssl_handleErrors();
 
-    /* Provide any AAD data. This can be called zero or more times as
-     * required
-     */
-    if (aad && aad_len > 0)
-    {
-        if (!EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len))
-            ssl_handleErrors();
-    }
+            /* Initialise key and IV */
+            if (!EVP_DecryptInit_ex(ctx, NULL, NULL, key, iv)) ssl_handleErrors();
 
-    /* Provide the message to be decrypted, and obtain the plaintext output.
-     * EVP_DecryptUpdate can be called multiple times if necessary
-     */
-    if (ciphertext)
-    {
-        if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
-            ssl_handleErrors();
+            /* Provide any AAD data. This can be called zero or more times as
+             * required
+             */
+            if (aad && aad_len > 0)
+            {
+                if (!EVP_DecryptUpdate(ctx, NULL, &len, aad, aad_len))
+                    ssl_handleErrors();
+            }
 
-        plaintext_len = len;
-    }
+            /* Provide the message to be decrypted, and obtain the plaintext output.
+             * EVP_DecryptUpdate can be called multiple times if necessary
+             */
+            if (ciphertext)
+            {
+                if (!EVP_DecryptUpdate(ctx, plaintext, &len, ciphertext, ciphertext_len))
+                    ssl_handleErrors();
 
-    /* Set expected tag value. Works in OpenSSL 1.0.1d and later */
-    if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, tag))
-        ssl_handleErrors();
+                plaintext_len = len;
+            }
 
-    /* Finalise the decryption. A positive return value indicates success,
-     * anything else is a failure - the plaintext is not trustworthy.
-     */
-    ret = EVP_DecryptFinal_ex(ctx, plaintext + len, &len);
+            /* Set expected tag value. Works in OpenSSL 1.0.1d and later */
+            if (!EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, 16, const_cast<unsigned char*>(tag)))
+                ssl_handleErrors();
 
-    /* Clean up */
-    EVP_CIPHER_CTX_free(ctx);
+            /* Finalise the decryption. A positive return value indicates success,
+             * anything else is a failure - the plaintext is not trustworthy.
+             */
+            ret = EVP_DecryptFinal_ex(ctx, plaintext + len, &len);
 
-    if (ret > 0)
-    {
-        /* Success */
-        plaintext_len += len;
-        return plaintext_len;
-    }
-    else
-    {
-        /* Verify failed */
-        return -1;
-    }
+            /* Clean up */
+            EVP_CIPHER_CTX_free(ctx);
+
+            if (ret > 0)
+            {
+                /* Success */
+                plaintext_len += len;
+                return plaintext_len;
+            }
+            else
+            {
+                /* Verify failed */
+                return -1;
+            }
+        };
+
+    std::string decrypted;
+    decrypted.resize(ciphertext.size() * 2);
+    auto length = ssl_decrypt_impl(cuc_str(ciphertext.data()), ciphertext.size(), cuc_str(associatedData.data()), associatedData.size(), tag.data(), key.data(), initializationVector.data(), uc_str(decrypted.data()));
+
+    decrypted.resize(length);
+
+    return decrypted;
 }
 
 int main() {
@@ -226,6 +240,8 @@ int main() {
     std::cout << decrypted << std::endl;
 
 
-    encrypted = ssl_encrypt(input, associatedData, key, nonce);
-    std::cout << "opessl encrypted size" << encrypted.size() << std::endl;
+    auto ssl_encrypted = ssl_encrypt(input, associatedData, key, nonce);
+    std::cout << "opessl encrypted size" << ssl_encrypted.cipherText.size() << std::endl;
+    auto ssl_decrypted = ssl_decrypt(ssl_encrypted.cipherText, associatedData, key, nonce, ssl_encrypted.tag);
+    std::cout << ssl_decrypted << std::endl;
 }
