@@ -8,17 +8,34 @@ if(MSVC)
 	endif()
 endif()
 
-add_executable(test src/test.cpp)
-target_compile_features(test PRIVATE cxx_std_20)
+## Find catkin and any catkin packages
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs)
+set(CRYPTO_LIB crypto_aead_ascon128v12_ref ssl crypto)
+
+catkin_package()
+
+include_directories(
+# include
+  ${catkin_INCLUDE_DIRS}
+)
+
+add_executable(test_crypto src/test.cpp)
+target_compile_features(test_crypto PRIVATE cxx_std_20)
 
 add_subdirectory(ascon-c EXCLUDE_FROM_ALL)
 
 set(WITH_APPS OFF CACHE INTERNAL "")
 add_subdirectory(openssl-cmake EXCLUDE_FROM_ALL)
 
-target_link_libraries(test PUBLIC ${target} crypto_aead_ascon128v12_ref ssl crypto)
+target_link_libraries(test_crypto PUBLIC ${target} ${CRYPTO_LIB})
 
-set_target_properties(test PROPERTIES
+set_target_properties(test_crypto PROPERTIES
 	XCODE_GENERATE_SCHEME ON
 )
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "test")
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "test_crypto")
+
+## Build encrypt and decrypt nodes
+# add_executable(encrypt src/crypto_sub.cpp)
+# target_link_libraries(encrypt ${catkin_LIBRARIES})
+# add_dependencies(encrypt test_crypto)
+

@@ -49,7 +49,7 @@ std::string ascon_decrypt(const std::string_view encrypted, const std::string_vi
     std::string decrypted;
     decrypted.resize(encrypted.size());
 
-    auto outsize = decrypted.size();
+    long long unsigned int outsize = decrypted.size();
 
     crypto_aead_decrypt(uc_str(decrypted.data()), &outsize, (unsigned char*)0, cuc_str(encrypted.data()), encrypted.size(),
         cuc_str(associatedData.data()), associatedData.size(), nonce.data(), key.data());
