@@ -1,61 +1,74 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Float64.h"
 #include <image_transport/image_transport.h>
 #include <opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
+extern "C"{                 // we need this otherwise it can't find the functions
+    #include "crypto_aead.h"
+    #include <openssl/evp.h>
+    #include <openssl/aes.h>
+    #include <openssl/err.h>
+    #include <api.h>
+}
+#include <string>
+#include <vector>
 
 //TODO: move ASCON and SSL functions to a header file
 
 //https://github.com/ros/ros_tutorials/tree/noetic-devel/roscpp_tutorials
 //These people rolled their own ROS crypto (bad idea): https://github.com/oysteinvolden/Real-time-sensor-encryption/tree/master 
 
-class EncryptPayload
-{
-private:
-    ros::NodeHandle n; 
+using namespace std;
 
-    // Publishers for hypothesized teleoperation categories
-    ros::Publisher status_pub = n.advertise<std_msgs::String>("crypto/status_message", 1);
-    ros::Publisher command_pub = n.advertise<std_msgs::String>("crypto/command_message", 1);
-    ros::Publisher video_pub = n.advertise<std_msgs::String>("crypto/video", 1);
+class GenericMessage{
+    public:
+        string name;
+        static ros::NodeHandle node;
+        ros::Subscriber sub;
+        ros::Publisher pub;
 
-    // Robot status topics
-    ros::Subscriber status_sub_heave = n.subscribe("/pose/heave", 1, &EncryptPayload::RobotStatusCallback, this);
-    ros::Subscriber status_sub_yaw = n.subscribe("/pose/yaw", 1, &EncryptPayload::RobotStatusCallback, this);
-
-    // Robot command topics
-    ros::Subscriber command_sub_surge = n.subscribe("/output_wrench/surge", 1, &EncryptPayload::RobotCommandCallback, this);
-    ros::Subscriber command_sub_sway = n.subscribe("/output_wrench/sway", 1, &EncryptPayload::RobotCommandCallback, this);
-    ros::Subscriber command_sub_heave = n.subscribe("/output_wrench/heave", 1, &EncryptPayload::RobotCommandCallback, this);
-    ros::Subscriber command_sub_yaw = n.subscribe("/output_wrench/yaw", 1, &EncryptPayload::RobotCommandCallback, this);
-    ros::Subscriber command_sub_pitch = n.subscribe("/output_wrench/pitch", 1, &EncryptPayload::RobotCommandCallback, this);
-    ros::Subscriber command_sub_roll = n.subscribe("/output_wrench/roll", 1, &EncryptPayload::RobotCommandCallback, this);
-    
-    // Video topic
-    ros::Subscriber video_sub = n.subscribe("/zed2/zed_node/rgb/image_rect_color", 1, &EncryptPayload::RobotVideoCallback, this);
-
-    // Example values for crypto 
-    std::string associatedData{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-    std::array<unsigned char, CRYPTO_NPUBBYTES> nonce{ 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
-    std::array<unsigned char, CRYPTO_KEYBYTES> key{ 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        // Example values for crypto 
+        std::string associatedData = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        std::array<unsigned char, CRYPTO_NPUBBYTES> nonce = { 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        std::array<unsigned char, CRYPTO_KEYBYTES> key = { 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
 
     
-public:
-    void RobotStatusCallback(const std_msgs::Float64::ConstPtr& msg) {
+    GenericMessage(string n, string type): name(n){
+        setupSubscriber();
+        pub = node.advertise<std_msgs::String>("crypto/" + type + name, 1);
+    }
+
+    virtual void setupSubscriber(){
+        sub = node.subscribe(name, 1, &GenericMessage::Callback, this);
+    }
+
+    void Callback(const std_msgs::Float64::ConstPtr& msg) {
+    // void Callback(const string &msg) {
         // Encrypt robot status data and publish
         //TODO: convert to string & add topic name
-        auto encrypted = ascon_encrypt(msg, associatedData,nonce,key);
-        status_pub.publish(encrypted);
+        auto encrypted = ascon_encrypt(msg, associatedData, nonce, key);
+        pub.publish(encrypted);
+    }
+};
+
+class StatusMessage : GenericMessage{
+    public:
+        StatusMessage(string name) : GenericMessage(name, "status"){}
+};
+class CommandMessage : GenericMessage{
+    public:
+        CommandMessage(string name) : GenericMessage(name, "command"){}
+};
+class VideoMessage : GenericMessage{
+    public:
+        VideoMessage(string name) : GenericMessage(name, "video"){}
+    
+    void setupSubscriber() override{
+        sub = node.subscribe(name, 1, &VideoMessage::Callback, this);
     }
 
-    void RobotCommandCallback(const std_msgs::Float64::ConstPtr& msg) {
-        // Encrypt robot command data and publish
-        //TODO: convert to a string & add topic name
-        auto encrypted = ascon_encrypt(msg, associatedData,nonce,key);
-        command_pub.publish(encrypted);
-    }
-
-    void RobotVideoCallback(const sensor_msgs::ImageConstPtr& msg) {
+    void Callback(const sensor_msgs::ImageConstPtr& msg) {
         //Message definition for image: https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Image.html 
         
         // Convert ROS image message to OpenCV image
@@ -69,11 +82,41 @@ public:
 
         //Encrypt image string and publish
         auto encrypted = ascon_encrypt(image_str, associatedData,nonce,key);
-        video_pub.publish(encrypted);
+        pub.publish(encrypted);
     }
 };
 
-int main(int arc, char **argv)
+class EncryptPayload
+{
+private:
+    ros::NodeHandle n; 
+
+    vector<StatusMessage> status_subs;
+    vector<CommandMessage> command_subs;
+    vector<VideoMessage> video_subs;
+
+    
+public:
+
+    EncryptPayload(){
+        vector<string> status_topics = {"/pose/heave", "/pose/yaw"};
+        vector<string> command_topics = {"/output_wrench/surge", "/output_wrench/sway", "/output_wrench/heave", "/output_wrench/yaw", "/output_wrench/pitch", "/output_wrench/roll"};
+        vector<string> video_topics = {"/zed2/zed_node/rgb/image_rect_color"};
+        
+        for (const std::string& topic : status_topics) {
+            status_subs.push_back(StatusMessage(topic));
+        }
+        for (const std::string& topic : command_topics) {
+            command_subs.push_back(CommandMessage(topic));
+        }
+        for (const std::string& topic : video_topics) {
+            video_subs.push_back(VideoMessage(topic));
+        }
+    }
+};
+
+
+int main(int argc, char **argv)
 {
     //Define ROS node "encrypt_teleop"
     ros::init(argc, argv, "encrypt_teleop");
@@ -86,7 +129,7 @@ int main(int arc, char **argv)
     ros::Rate loop_rate(30);
 
     //Allows for subscribers to be handled asynchronously using available threads 
-    ros::AsyncSpinner s;
+    ros::AsyncSpinner s(0);
     s.start();
 
     while(ros::ok())

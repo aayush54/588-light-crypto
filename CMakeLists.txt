@@ -9,7 +9,7 @@ if(MSVC)
 endif()
 
 ## Find catkin and any catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp std_msgs image_transport cv_bridge)
 set(CRYPTO_LIB crypto_aead_ascon128v12_ref ssl crypto)
 
 catkin_package()
@@ -35,7 +35,8 @@ set_target_properties(test_crypto PROPERTIES
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "test_crypto")
 
 ## Build encrypt and decrypt nodes
-# add_executable(encrypt src/crypto_sub.cpp)
-# target_link_libraries(encrypt ${catkin_LIBRARIES})
-# add_dependencies(encrypt test_crypto)
+add_executable(encrypt src/encrypt_teleop.cpp)
+target_compile_features(encrypt PRIVATE cxx_std_20)
+target_link_libraries(encrypt ${catkin_LIBRARIES} ${CRYPTO_LIB})
+add_dependencies(encrypt test_crypto)
 

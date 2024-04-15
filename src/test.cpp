@@ -3,6 +3,7 @@
 #include <vector>
 #include <array>
 #include <cassert>
+#include "ros/ros.h"
 
 extern "C"{                 // we need this otherwise it can't find the functions
 #include "crypto_aead.h"
