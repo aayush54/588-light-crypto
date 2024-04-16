@@ -15,16 +15,24 @@ extern "C"{                 // we need this otherwise it can't find the function
 #include <api.h>
 }
 
+struct Keys{
+    const static inline std::string associatedData = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    const static inline std::array<unsigned char, CRYPTO_NPUBBYTES> nonce = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    const static inline std::array<unsigned char, CRYPTO_KEYBYTES> key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+};
+
 template <typename Status, typename Command, typename Video>
 class Payload {
 public:
+    
+
     Payload(){
         // std::vector<std::string> status_topics;
         // std::vector<std::string> command_topics;
-        std::vector<std::string> video_topics;
+        // std::vector<std::string> video_topics;
         std::vector<std::string> status_topics = {"/pose/heave", "/pose/yaw"};
         std::vector<std::string> command_topics = {"/output_wrench/surge", "/output_wrench/sway", "/output_wrench/heave", "/output_wrench/yaw", "/output_wrench/pitch", "/output_wrench/roll"};
-        // std::vector<std::string> video_topics = {"/zed2/zed_node/rgb/image_rect_color"};
+        std::vector<std::string> video_topics = {"/zed2/zed_node/rgb/image_rect_color"};
 
         for (const std::string &topic : status_topics)
         {

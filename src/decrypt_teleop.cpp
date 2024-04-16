@@ -34,14 +34,9 @@ public:
     ros::Subscriber sub;
     ros::Publisher pub;
 
-    // Example values for crypto
-    std::string associatedData = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    std::array<unsigned char, CRYPTO_NPUBBYTES> nonce = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-    std::array<unsigned char, CRYPTO_KEYBYTES> key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
-
-    GenericDecrypt(std::string name)
-    {   
-        sub_name = "encrypt/crypto" + name;
+    GenericDecrypt(const std::string &name)
+    {
+        sub_name = "crypto" + name;
         pub_name = "plaintext" + name;
 
         setupSubscriber();
@@ -54,52 +49,51 @@ public:
         sub = node->subscribe(sub_name, 1, &GenericDecrypt::Callback, this);
     }
 
-    virtual void setupPublisher(){
-        cout << "Publisher" << sub_name << "\n";
+    virtual void setupPublisher()
+    {
+        cout << "Publisher" << pub_name << "\n";
         pub = node->advertise<std_msgs::Float64>(pub_name, 1);
     }
 
     void Callback(const std_msgs::String::ConstPtr &msg)
     {
+        cout << "callback\n";
         // Decrypt robot status data and publish
-        std::string decrypted = ascon_decrypt(msg->data, associatedData, nonce, key);
-        
-        double double_decrypt = *reinterpret_cast<double*>(decrypted.data());
+        std::string decrypted = ascon_decrypt(msg->data, Keys::associatedData, Keys::nonce, Keys::key);
+
+        double double_decrypt = *reinterpret_cast<double *>(decrypted.data());
         std_msgs::Float64 decrypted_double;
         decrypted_double.data = double_decrypt;
         pub.publish(decrypted_double);
     }
 };
 
-class DecryptStatus : GenericDecrypt
+class VideoDecrypt
 {
 public:
-    DecryptStatus(std::string name) : GenericDecrypt(name) {}
-};
-class DecryptCommand : GenericDecrypt
-{
-public:
-    DecryptCommand(std::string name) : GenericDecrypt(name) {}
-};
+    std::string sub_name;
+    std::string pub_name;
 
-class DecryptVideo : GenericDecrypt
-{
-public:
-    DecryptVideo(std::string name) : GenericDecrypt(name) {}
+    ros::Subscriber sub;
+    ros::Publisher pub;
 
-    void setupSubscriber() override
+    VideoDecrypt(const std::string &name)
     {
-        sub = node->subscribe(sub_name, 1, &DecryptVideo::Callback, this);
-    }
+        ros::NodeHandle* &node = GenericDecrypt::node;
+        pub_name = "plaintext" + name;
+        sub_name = "crypto" + name;
 
-    void setupPublisher() override{
+        cout << "Video Sub " << sub_name << " \n";
+        sub = node->subscribe(sub_name, 1, &VideoDecrypt::Callback, this);
+
+        cout << "Publisher " << pub_name << "\n";
         pub = node->advertise<sensor_msgs::Image>(pub_name, 1);
     }
 
     void Callback(const std_msgs::String::ConstPtr &msg)
     {
         /// Decrypt image string
-        auto decrypted = ascon_decrypt(std::string_view(reinterpret_cast<const char*>(&(msg->data)), sizeof(double)), associatedData, nonce, key);
+        auto decrypted = ascon_decrypt(std::string_view(reinterpret_cast<const char *>(&(msg->data)), sizeof(double)), Keys::associatedData, Keys::nonce, Keys::key);
 
         // Convert image string to OpenCV image
         std::vector<uchar> buffer(decrypted.begin(), decrypted.end());
@@ -109,7 +103,7 @@ public:
         cv_bridge::CvImage cv_image;
         cv_image.image = image;
         cv_image.encoding = sensor_msgs::image_encodings::BGR8;
-        
+
         // TODO: Are we publishing Image or ImagePtr??
         sensor_msgs::ImagePtr ros_image = cv_image.toImageMsg();
 
@@ -118,7 +112,6 @@ public:
     }
 };
 
-
 int main(int argc, char **argv)
 {
     // Define ROS node "decrypt_teleop"
@@ -126,7 +119,7 @@ int main(int argc, char **argv)
 
     // Define instance of class
     GenericDecrypt::node = new ros::NodeHandle();
-    Payload<GenericDecrypt, GenericDecrypt, DecryptVideo> e;
+    Payload<GenericDecrypt, GenericDecrypt, VideoDecrypt> e;
 
     // TODO: Set Hertz to match frequency of what we're sending
     // Set the frequency of the update to 30 Hz
