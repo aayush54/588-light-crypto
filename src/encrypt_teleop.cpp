@@ -37,10 +37,12 @@ class GenericEncrypt{
 
 
     virtual void setupSubscriber(){
+        cout << "Subscriber" << sub_name << "\n";
         sub = node->subscribe(sub_name, 1, &GenericEncrypt::Callback, this);
     }
 
     virtual void setupPublisher(){
+        cout << "Publisher" << pub_name << "\n";
         pub = node->advertise<std_msgs::String>(pub_name, 1);
     }
 
@@ -66,12 +68,13 @@ class EncryptVideo : GenericEncrypt{
         EncryptVideo(std::string name) : GenericEncrypt(name){}
     
     void setupSubscriber() override{
+        cout << "Video Sub " << sub_name << " \n";
         sub = node->subscribe(sub_name, 1, &EncryptVideo::Callback, this);
     }
 
     void Callback(const sensor_msgs::ImageConstPtr& msg) {
         //Message definition for image: https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Image.html 
-        
+        cout << "Video Callback\n";
         // Convert ROS image message to OpenCV image
         cv_bridge::CvImagePtr cv_ptr;
         cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
