@@ -127,7 +127,7 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(30);
 
     // Allows for subscribers to be handled asynchronously using available threads
-    ros::AsyncSpinner s(0);
+    ros::AsyncSpinner s(4);
     s.start();
 
     while (ros::ok())
