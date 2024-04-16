@@ -27,7 +27,7 @@ class GenericDecrypt
 public:
     std::string pub_name;
     std::string sub_name;
-    static ros::NodeHandle node;
+    ros::NodeHandle node;
     ros::Subscriber sub;
     ros::Publisher pub;
 
@@ -134,5 +134,3 @@ int main(int argc, char **argv)
         loop_rate.sleep();
     }
 }
-
-ros::NodeHandle GenericDecrypt::node;
