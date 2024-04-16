@@ -25,7 +25,7 @@ class GenericEncrypt{
         std::string associatedData = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
         std::array<unsigned char, CRYPTO_NPUBBYTES> nonce = { 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
         std::array<unsigned char, CRYPTO_KEYBYTES> key = { 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
-
+    
     
     GenericEncrypt(std::string name){
         sub_name = name;

@@ -19,10 +19,12 @@ template <typename Status, typename Command, typename Video>
 class Payload {
 public:
     Payload(){
-        std::vector<std::string> status_topics = {"/pose/heave", "/pose/yaw"};
-        std::vector<std::string> command_topics = {"/output_wrench/surge", "/output_wrench/sway", "/output_wrench/heave", "/output_wrench/yaw", "/output_wrench/pitch", "/output_wrench/roll"};
+        std::vector<std::string> status_topics;
+        std::vector<std::string> command_topics;
+        // std::vector<std::string> video_topics;
+        // std::vector<std::string> status_topics = {"/pose/heave", "/pose/yaw"};
+        // std::vector<std::string> command_topics = {"/output_wrench/surge", "/output_wrench/sway", "/output_wrench/heave", "/output_wrench/yaw", "/output_wrench/pitch", "/output_wrench/roll"};
         std::vector<std::string> video_topics = {"/zed2/zed_node/rgb/image_rect_color"};
-        
 
         for (const std::string &topic : status_topics)
         {
@@ -39,7 +41,6 @@ public:
     }
 
 private:
-    Video test = Video("/zed2/zed_node/rgb/image_rect_color");
     std::vector<Status> status_subs;
     std::vector<Command> command_subs;
     std::vector<Video> video_subs;
