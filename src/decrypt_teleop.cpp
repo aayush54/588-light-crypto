@@ -27,7 +27,7 @@ class GenericDecrypt
 public:
     std::string pub_name;
     std::string sub_name;
-    ros::NodeHandle node;
+    static ros::NodeHandle *node;
     ros::Subscriber sub;
     ros::Publisher pub;
 
@@ -37,7 +37,8 @@ public:
     std::array<unsigned char, CRYPTO_KEYBYTES> key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
     GenericDecrypt(std::string name)
-    {
+    {   
+        if(!node) node = new ros::NodeHandle();
         sub_name = "crypto" + name;
         pub_name = name;
 
@@ -45,13 +46,20 @@ public:
         setupPublisher();
     }
 
+    ~GenericDecrypt(){
+        if (node){
+            delete node;
+            node = nullptr;
+        }
+    }
+
     virtual void setupSubscriber()
     {
-        sub = node.subscribe(sub_name, 1, &GenericDecrypt::Callback, this);
+        sub = node->subscribe(sub_name, 1, &GenericDecrypt::Callback, this);
     }
 
     virtual void setupPublisher(){
-        pub = node.advertise<std_msgs::Float64>(pub_name, 1);
+        pub = node->advertise<std_msgs::Float64>(pub_name, 1);
     }
 
     void Callback(const std_msgs::String::ConstPtr &msg)
@@ -83,11 +91,11 @@ public:
 
     void setupSubscriber() override
     {
-        sub = node.subscribe(sub_name, 1, &DecryptVideo::Callback, this);
+        sub = node->subscribe(sub_name, 1, &DecryptVideo::Callback, this);
     }
 
     void setupPublisher() override{
-        pub = node.advertise<sensor_msgs::Image>(pub_name, 1);
+        pub = node->advertise<sensor_msgs::Image>(pub_name, 1);
     }
 
     void Callback(const std_msgs::Float64::ConstPtr &msg)
@@ -133,4 +141,8 @@ int main(int argc, char **argv)
     {
         loop_rate.sleep();
     }
+
+    delete GenericDecrypt::node;
 }
+
+ros::NodeHandle *GenericDecrypt::node = nullptr;

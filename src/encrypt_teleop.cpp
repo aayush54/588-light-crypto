@@ -6,6 +6,9 @@
 #include <cv_bridge/cv_bridge.h>
 #include "crypto_helpers.h"
 #include <string_view>
+#include <iostream>
+
+using std::cout;
 
 
 //https://github.com/ros/ros_tutorials/tree/noetic-devel/roscpp_tutorials
@@ -15,7 +18,7 @@ class GenericEncrypt{
     public:
         std::string pub_name;
         std::string sub_name;
-        ros::NodeHandle node;
+        static ros::NodeHandle *node;
         ros::Subscriber sub;
         ros::Publisher pub;
 
@@ -33,22 +36,26 @@ class GenericEncrypt{
         setupPublisher();
     }
 
+    ~GenericEncrypt(){
+        cout << "AHHHH IM DYING\n";
+    }
+
     virtual void setupSubscriber(){
-        sub = node.subscribe(sub_name, 1, &GenericEncrypt::Callback, this);
+        sub = node->subscribe(sub_name, 1, &GenericEncrypt::Callback, this);
     }
 
     virtual void setupPublisher(){
-        pub = node.advertise<std_msgs::String>(pub_name, 1);
+        pub = node->advertise<std_msgs::String>(pub_name, 1);
     }
 
     void Callback(const std_msgs::Float64::ConstPtr& msg) {
-    // void Callback(const string &msg) {
         // Encrypt robot status data and publish
-        //TODO: convert to string & add topic name
+        cout << "Callback1\n";
         std::string encrypted = ascon_encrypt(std::string_view(reinterpret_cast<const char*>(&(msg->data)), sizeof(double)), associatedData, nonce, key);
         std_msgs::String string_encrypted;
         string_encrypted.data = encrypted.data();
         pub.publish(string_encrypted);
+        cout << "Callback2\n";
     }
 };
 
@@ -65,7 +72,7 @@ class EncryptVideo : GenericEncrypt{
         EncryptVideo(std::string name) : GenericEncrypt(name){}
     
     void setupSubscriber() override{
-        sub = node.subscribe(sub_name, 1, &EncryptVideo::Callback, this);
+        sub = node->subscribe(sub_name, 1, &EncryptVideo::Callback, this);
     }
 
     void Callback(const sensor_msgs::ImageConstPtr& msg) {
@@ -95,6 +102,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "encrypt_teleop");
 
     //Define instance of class
+    GenericEncrypt::node = new ros::NodeHandle();
     Payload<EncryptStatus, EncryptCommand, EncryptVideo> e;
 
     //TODO: Set Hertz to match frequency of what we're sending
@@ -102,12 +110,20 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(30);
 
     //Allows for subscribers to be handled asynchronously using available threads 
-    ros::AsyncSpinner s(0);
+    ros::AsyncSpinner s(4);
     s.start();
 
+    cout << "Hello\n";
     while(ros::ok())
     {
+    cout << GenericEncrypt::node;
+    cout << "Hello\n";
         loop_rate.sleep();
+    cout << GenericEncrypt::node;
+    cout << "Goodbye\n";
     }
-
+    cout << "Goodbye\n";
+    delete GenericEncrypt::node;
 }
+
+ros::NodeHandle *GenericEncrypt::node;

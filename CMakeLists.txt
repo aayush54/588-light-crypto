@@ -10,7 +10,8 @@ endif()
 
 ## Find catkin and any catkin packages
 find_package(OpenSSL REQUIRED)
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs image_transport cv_bridge)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs image_transport cv_bridge roslaunch)
+roslaunch_add_file_check(launch)
 set(CRYPTO_LIB crypto_aead_ascon128v12_ref)
 
 catkin_package()
@@ -43,4 +44,7 @@ target_compile_features(decrypt PRIVATE cxx_std_20)
 target_link_libraries(decrypt ${catkin_LIBRARIES} crypto_aead_ascon128v12_ref OpenSSL::Crypto)
 # add_dependencies(decrypt test_crypto)
 
+add_executable(basic src/encrypt_test.cpp src/crypto_helpers.cpp)
+target_compile_features(basic PRIVATE cxx_std_20)
+target_link_libraries(basic ${catkin_LIBRARIES} crypto_aead_ascon128v12_ref OpenSSL::Crypto)
 # message(FATAL_ERROR Libraries=${CRYPTO_LIB})

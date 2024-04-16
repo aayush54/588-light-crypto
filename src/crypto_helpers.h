@@ -19,21 +19,24 @@ template <typename Status, typename Command, typename Video>
 class Payload {
 public:
     Payload(){
-        std::vector<std::string> status_topics = {"/pose/heave", "/pose/yaw"};
-        std::vector<std::string> command_topics = {"/output_wrench/surge", "/output_wrench/sway", "/output_wrench/heave", "/output_wrench/yaw", "/output_wrench/pitch", "/output_wrench/roll"};
-        std::vector<std::string> video_topics = {"/zed2/zed_node/rgb/image_rect_color"};
+        std::vector<std::string> status_topics = {"/pose/heave"};
+        std::vector<std::string> command_topics;
+        std::vector<std::string> video_topics;
+        // std::vector<std::string> status_topics = {"/pose/heave", "/pose/yaw"};
+        // std::vector<std::string> command_topics = {"/output_wrench/surge", "/output_wrench/sway", "/output_wrench/heave", "/output_wrench/yaw", "/output_wrench/pitch", "/output_wrench/roll"};
+        // std::vector<std::string> video_topics = {"/zed2/zed_node/rgb/image_rect_color"};
 
         for (const std::string &topic : status_topics)
         {
-            status_subs.push_back(Status(topic));
+            status_subs.emplace_back(topic);
         }
         for (const std::string &topic : command_topics)
         {
-            command_subs.push_back(Command(topic));
+            command_subs.emplace_back(topic);
         }
         for (const std::string &topic : video_topics)
         {
-            video_subs.push_back(Video(topic));
+            video_subs.emplace_back(topic);
         }
     }
 
