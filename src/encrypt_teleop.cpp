@@ -101,7 +101,7 @@ int main(int argc, char **argv)
 
     //Define instance of class
     GenericEncrypt::node = new ros::NodeHandle();
-    Payload<EncryptStatus, EncryptCommand, EncryptVideo> e;
+    Payload<GenericEncrypt, GenericEncrypt, EncryptVideo> e;
 
     //TODO: Set Hertz to match frequency of what we're sending
     //Set the frequency of the update to 30 Hz
