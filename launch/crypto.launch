@@ -2,7 +2,10 @@
 
 <group ns="encrypt">
 <node pkg="588-light-crypto" name="encrypt" type="encrypt"/>
-<!-- <node pkg="588-light-crypto" name="encrypt" type="encrypt" launch-prefix="gdb -ex run args"/> -->
+</group>
+
+<group ns="decrypt">
+<node pkg="588-light-crypto" name="decrypt" type="decrypt"/>
 </group>
 
 

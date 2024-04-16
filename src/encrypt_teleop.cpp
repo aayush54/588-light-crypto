@@ -8,9 +8,6 @@
 #include <string_view>
 #include <iostream>
 
-using std::cout;
-
-
 //https://github.com/ros/ros_tutorials/tree/noetic-devel/roscpp_tutorials
 //These people rolled their own ROS crypto (bad idea): https://github.com/oysteinvolden/Real-time-sensor-encryption/tree/master 
 
@@ -36,9 +33,6 @@ class GenericEncrypt{
         setupPublisher();
     }
 
-    ~GenericEncrypt(){
-        cout << "AHHHH IM DYING\n";
-    }
 
     virtual void setupSubscriber(){
         sub = node->subscribe(sub_name, 1, &GenericEncrypt::Callback, this);
@@ -50,12 +44,10 @@ class GenericEncrypt{
 
     void Callback(const std_msgs::Float64::ConstPtr& msg) {
         // Encrypt robot status data and publish
-        cout << "Callback1\n";
         std::string encrypted = ascon_encrypt(std::string_view(reinterpret_cast<const char*>(&(msg->data)), sizeof(double)), associatedData, nonce, key);
         std_msgs::String string_encrypted;
         string_encrypted.data = encrypted.data();
         pub.publish(string_encrypted);
-        cout << "Callback2\n";
     }
 };
 
@@ -110,19 +102,13 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(30);
 
     //Allows for subscribers to be handled asynchronously using available threads 
-    ros::AsyncSpinner s(4);
+    ros::AsyncSpinner s(0);
     s.start();
 
-    cout << "Hello\n";
     while(ros::ok())
     {
-    cout << GenericEncrypt::node;
-    cout << "Hello\n";
         loop_rate.sleep();
-    cout << GenericEncrypt::node;
-    cout << "Goodbye\n";
     }
-    cout << "Goodbye\n";
     delete GenericEncrypt::node;
 }
 

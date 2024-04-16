@@ -38,19 +38,11 @@ public:
 
     GenericDecrypt(std::string name)
     {   
-        if(!node) node = new ros::NodeHandle();
         sub_name = "crypto" + name;
-        pub_name = name;
+        pub_name = "plaintext" + name;
 
         setupSubscriber();
         setupPublisher();
-    }
-
-    ~GenericDecrypt(){
-        if (node){
-            delete node;
-            node = nullptr;
-        }
     }
 
     virtual void setupSubscriber()
@@ -127,6 +119,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "decrypt_teleop");
 
     // Define instance of class
+    GenericDecrypt::node = new ros::NodeHandle();
     Payload<DecryptStatus, DecryptCommand, DecryptVideo> e;
 
     // TODO: Set Hertz to match frequency of what we're sending
