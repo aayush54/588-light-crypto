@@ -90,7 +90,7 @@ public:
         pub = node->advertise<sensor_msgs::Image>(pub_name, 1);
     }
 
-    void Callback(const std_msgs::Float64::ConstPtr &msg)
+    void Callback(const std_msgs::String::ConstPtr &msg)
     {
         /// Decrypt image string
         auto decrypted = ascon_decrypt(std::string_view(reinterpret_cast<const char*>(&(msg->data)), sizeof(double)), associatedData, nonce, key);

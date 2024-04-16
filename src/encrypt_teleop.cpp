@@ -8,6 +8,8 @@
 #include <string_view>
 #include <iostream>
 
+using std::cout;
+
 //https://github.com/ros/ros_tutorials/tree/noetic-devel/roscpp_tutorials
 //These people rolled their own ROS crypto (bad idea): https://github.com/oysteinvolden/Real-time-sensor-encryption/tree/master 
 
@@ -83,6 +85,7 @@ class EncryptVideo : GenericEncrypt{
         auto encrypted = ascon_encrypt(image_str, associatedData,nonce,key);
         std_msgs::String encrypted_string;
         encrypted_string.data = encrypted.data();
+        cout << encrypted << "\n";
         pub.publish(encrypted_string);
     }
 };
