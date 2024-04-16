@@ -9,34 +9,38 @@ if(MSVC)
 endif()
 
 ## Find catkin and any catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp std_msgs image_transport cv_bridge)
-set(CRYPTO_LIB crypto_aead_ascon128v12_ref ssl crypto)
+find_package(OpenSSL REQUIRED)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs image_transport cv_bridge)
+set(CRYPTO_LIB crypto_aead_ascon128v12_ref)
 
 catkin_package()
 
-include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
-)
+include_directories(include ${catkin_INCLUDE_DIRS})
 
-add_executable(test_crypto src/test.cpp)
-target_compile_features(test_crypto PRIVATE cxx_std_20)
+# add_executable(test_crypto src/crypto_helpers.cpp)
+# target_compile_features(test_crypto PRIVATE cxx_std_20)
 
 add_subdirectory(ascon-c EXCLUDE_FROM_ALL)
 
 set(WITH_APPS OFF CACHE INTERNAL "")
-add_subdirectory(openssl-cmake EXCLUDE_FROM_ALL)
+# add_subdirectory(openssl-cmake EXCLUDE_FROM_ALL)
 
-target_link_libraries(test_crypto PUBLIC ${target} ${CRYPTO_LIB})
+# target_link_libraries(test_crypto PUBLIC ${target} ${CRYPTO_LIB})
 
-set_target_properties(test_crypto PROPERTIES
-	XCODE_GENERATE_SCHEME ON
-)
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "test_crypto")
+# set_target_properties(test_crypto PROPERTIES
+# 	XCODE_GENERATE_SCHEME ON
+# )
+# set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT "test_crypto")
 
 ## Build encrypt and decrypt nodes
-add_executable(encrypt src/encrypt_teleop.cpp)
+add_executable(encrypt src/encrypt_teleop.cpp src/crypto_helpers.cpp)
 target_compile_features(encrypt PRIVATE cxx_std_20)
-target_link_libraries(encrypt ${catkin_LIBRARIES} ${CRYPTO_LIB})
-add_dependencies(encrypt test_crypto)
+target_link_libraries(encrypt ${catkin_LIBRARIES} crypto_aead_ascon128v12_ref OpenSSL::Crypto)
+# add_dependencies(encrypt test_crypto)
 
+add_executable(decrypt src/decrypt_teleop.cpp src/crypto_helpers.cpp)
+target_compile_features(decrypt PRIVATE cxx_std_20)
+target_link_libraries(decrypt ${catkin_LIBRARIES} crypto_aead_ascon128v12_ref OpenSSL::Crypto)
+# add_dependencies(decrypt test_crypto)
+
+# message(FATAL_ERROR Libraries=${CRYPTO_LIB})

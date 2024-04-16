@@ -3,15 +3,7 @@
 #include <vector>
 #include <array>
 #include <cassert>
-#include "ros/ros.h"
-
-extern "C"{                 // we need this otherwise it can't find the functions
-#include "crypto_aead.h"
-#include <openssl/evp.h>
-#include <openssl/aes.h>
-#include <openssl/err.h>
-#include <api.h>
-}
+#include "crypto_helpers.h"
 
 
 inline const unsigned char* cuc_str(const char* s) {
@@ -58,6 +50,8 @@ std::string ascon_decrypt(const std::string_view encrypted, const std::string_vi
     return decrypted;
 }
 
+#if 0
+
 // OpenSSL code adapted from: https://stackoverflow.com/questions/9889492/how-to-do-encryption-using-aes-in-openssl
 void ssl_handleErrors(void)
 {
@@ -72,10 +66,6 @@ void ssl_handleErrors(void)
     abort();
 }
 
-struct ssl_encrypt_result {
-    std::array<unsigned char, 16> tag;
-    std::string cipherText;
-};
 ssl_encrypt_result ssl_encrypt(const std::string_view plaintext, const std::string_view associatedData, const std::array<unsigned char, CRYPTO_KEYBYTES>& key, const std::array<unsigned char, CRYPTO_KEYBYTES>& initializationVector) {
 
     constexpr auto ssl_encrypt_impl = [](const unsigned char* plaintext, size_t plaintext_len, const unsigned char* aad,
@@ -145,7 +135,10 @@ ssl_encrypt_result ssl_encrypt(const std::string_view plaintext, const std::stri
     return result;
 }
 
-std::string ssl_decrypt(const std::string_view ciphertext, const std::string_view associatedData, const std::array<unsigned char, CRYPTO_KEYBYTES>& key, const std::array<unsigned char, CRYPTO_KEYBYTES>& initializationVector, const std::array<unsigned char, 16>& tag) {
+std::string ssl_decrypt(ssl_encrypt_result &ssl_encrypted, const std::string_view associatedData, const std::array<unsigned char, CRYPTO_KEYBYTES>& key, const std::array<unsigned char, CRYPTO_KEYBYTES>& initializationVector) {
+
+    const std::string_view &ciphertext = ssl_encrypted.cipherText;
+    const std::array<unsigned char, 16> &tag = ssl_encrypted.tag;
 
     constexpr auto ssl_decrypt_impl = [](const unsigned char* ciphertext, size_t ciphertext_len, const unsigned char* aad,
         size_t aad_len, const unsigned char* tag, const unsigned char* key, const unsigned char* iv,
@@ -222,27 +215,28 @@ std::string ssl_decrypt(const std::string_view ciphertext, const std::string_vie
     return decrypted;
 }
 
-int main() {
+// int main() {
 
-    // openssl stuff that needs to happen before you do anything
-    OpenSSL_add_all_algorithms();
-    ERR_load_crypto_strings();
+//     // openssl stuff that needs to happen before you do anything
+//     OpenSSL_add_all_algorithms();
+//     ERR_load_crypto_strings();
 
-    std::string associatedData{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-    std::array<unsigned char, CRYPTO_NPUBBYTES> nonce{ 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
-    std::array<unsigned char, CRYPTO_KEYBYTES> key{ 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
+//     std::string associatedData{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+//     std::array<unsigned char, CRYPTO_NPUBBYTES> nonce{ 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
+//     std::array<unsigned char, CRYPTO_KEYBYTES> key{ 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
 
-    std::string_view input = "this is a string that is longer than 16 bytes and should still make it through unscathed";
+//     std::string_view input = "this is a string that is longer than 16 bytes and should still make it through unscathed";
 
-    auto encrypted = ascon_encrypt(input, associatedData,nonce,key);
-    auto decrypted = ascon_decrypt(encrypted, associatedData, nonce, key);
+//     auto encrypted = ascon_encrypt(input, associatedData,nonce,key);
+//     auto decrypted = ascon_decrypt(encrypted, associatedData, nonce, key);
 
-    std::cout << "encrypted size: " << encrypted.size() << std::endl;
-    std::cout << decrypted << std::endl;
+//     std::cout << "encrypted size: " << encrypted.size() << std::endl;
+//     std::cout << decrypted << std::endl;
 
 
-    auto ssl_encrypted = ssl_encrypt(input, associatedData, key, nonce);
-    std::cout << "opessl encrypted size" << ssl_encrypted.cipherText.size() << std::endl;
-    auto ssl_decrypted = ssl_decrypt(ssl_encrypted.cipherText, associatedData, key, nonce, ssl_encrypted.tag);
-    std::cout << ssl_decrypted << std::endl;
-}
+//     auto ssl_encrypted = ssl_encrypt(input, associatedData, key, nonce);
+//     std::cout << "opessl encrypted size" << ssl_encrypted.cipherText.size() << std::endl;
+//     auto ssl_decrypted = ssl_decrypt(ssl_encrypted, associatedData, key, nonce);
+//     std::cout << ssl_decrypted << std::endl;
+// }
+#endif
