@@ -15,6 +15,9 @@ extern "C"
 #include <string>
 #include <vector>
 #include "crypto_helpers.h"
+#include <iostream>
+
+using std::cout;
 
 // TODO: move ASCON and SSL functions to a header file
 // beddy this should be good to go for ASCON once we figure out how to link it
@@ -38,7 +41,7 @@ public:
 
     GenericDecrypt(std::string name)
     {   
-        sub_name = "crypto" + name;
+        sub_name = "encrypt/crypto" + name;
         pub_name = "plaintext" + name;
 
         setupSubscriber();
@@ -47,10 +50,12 @@ public:
 
     virtual void setupSubscriber()
     {
+        cout << "Subscriber" << sub_name << "\n";
         sub = node->subscribe(sub_name, 1, &GenericDecrypt::Callback, this);
     }
 
     virtual void setupPublisher(){
+        cout << "Publisher" << sub_name << "\n";
         pub = node->advertise<std_msgs::Float64>(pub_name, 1);
     }
 
@@ -76,6 +81,7 @@ class DecryptCommand : GenericDecrypt
 public:
     DecryptCommand(std::string name) : GenericDecrypt(name) {}
 };
+
 class DecryptVideo : GenericDecrypt
 {
 public:

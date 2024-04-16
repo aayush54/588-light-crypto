@@ -52,7 +52,7 @@ class GenericEncrypt{
         std_msgs::String string_encrypted;
         string_encrypted.data = encrypted.data();
         pub.publish(string_encrypted);
-    }
+    } 
 };
 
 class EncryptStatus : GenericEncrypt{
