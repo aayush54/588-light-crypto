@@ -41,7 +41,7 @@ public:
 
     GenericDecrypt(std::string name)
     {   
-        sub_name = "encrypt/crypto" + name;
+        sub_name = "crypto" + name;
         pub_name = "plaintext" + name;
 
         setupSubscriber();
@@ -69,17 +69,6 @@ public:
         decrypted_double.data = double_decrypt;
         pub.publish(decrypted_double);
     }
-};
-
-class DecryptStatus : GenericDecrypt
-{
-public:
-    DecryptStatus(std::string name) : GenericDecrypt(name) {}
-};
-class DecryptCommand : GenericDecrypt
-{
-public:
-    DecryptCommand(std::string name) : GenericDecrypt(name) {}
 };
 
 class DecryptVideo : GenericDecrypt

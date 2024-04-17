@@ -54,15 +54,6 @@ class GenericEncrypt{
         pub.publish(string_encrypted);
     } 
 };
-
-class EncryptStatus : GenericEncrypt{
-    public:
-        EncryptStatus(std::string name) : GenericEncrypt(name){}
-};
-class EncryptCommand : GenericEncrypt{
-    public:
-        EncryptCommand(std::string name) : GenericEncrypt(name){}
-};
 class EncryptVideo : GenericEncrypt{
     public:
         EncryptVideo(std::string name) : GenericEncrypt(name){}
