@@ -1,12 +1,7 @@
 <launch>
 
-<group ns="encrypt">
 <node pkg="588-light-crypto" name="encrypt" type="encrypt"/>
-</group>
-
-<group ns="decrypt">
 <node pkg="588-light-crypto" name="decrypt" type="decrypt"/>
-</group>
 
 
 </launch>
