@@ -16,6 +16,7 @@ extern "C"
 #include <vector>
 #include "crypto_helpers.h"
 #include <iostream>
+#include <sstream>
 
 using std::cout;
 
@@ -34,8 +35,14 @@ public:
     ros::Subscriber sub;
     ros::Publisher pub;
 
-    GenericDecrypt(const std::string &name)
-    {
+    // Example values for crypto
+    //std::string associatedData = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    const std::string associatedData = "012345678910";
+    //const std::array<unsigned char, CRYPTO_NPUBBYTES> nonce = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    const std::array<unsigned char, CRYPTO_KEYBYTES> key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+
+    GenericDecrypt(std::string name)
+    {   
         sub_name = "crypto" + name;
         pub_name = "plaintext" + name;
 
@@ -49,19 +56,31 @@ public:
         sub = node->subscribe(sub_name, 1, &GenericDecrypt::Callback, this);
     }
 
-    virtual void setupPublisher()
-    {
+    virtual void setupPublisher(){
         cout << "Publisher" << pub_name << "\n";
         pub = node->advertise<std_msgs::Float64>(pub_name, 1);
     }
 
     void Callback(const std_msgs::String::ConstPtr &msg)
     {
-        cout << "callback\n";
-        // Decrypt robot status data and publish
-        std::string decrypted = ascon_decrypt(msg->data, Keys::associatedData, Keys::nonce, Keys::key);
+	const std::array<unsigned char, CRYPTO_NPUBBYTES> nonce = { 0, 1, 2,  3,  4,  5,  6,  7, 8, 9, 10, 11, 12, 13, 14, 15 };
+	std::string_view msg_str_view;
+	msg_str_view = std::string_view(msg->data);
+	// Decrypt robot status data and publish
+	cout << "STRING VIEW: ";
+	printBytes(msg_str_view);
+	cout << "assoc: ";
+	printBytes(associatedData);
+	cout << "nonce: ";
+        printBytes(nonce);
+        cout << "key: ";
+        printBytes(key);
 
-        double double_decrypt = *reinterpret_cast<double *>(decrypted.data());
+        std::string decrypted = ascon_decrypt(msg_str_view, associatedData, nonce, key);
+	cout << "decrypted nonsense: " << decrypted << "\n";	
+	//double double_decrypt;
+	//memcpy(&double_decrypt, decrypted.data(), sizeof(double));
+	double double_decrypt = std::stod(decrypted);
         std_msgs::Float64 decrypted_double;
         decrypted_double.data = double_decrypt;
         pub.publish(decrypted_double);
@@ -76,6 +95,10 @@ public:
 
     ros::Subscriber sub;
     ros::Publisher pub;
+
+    // Example values for crypto
+    const std::string associatedData = "012345678910";
+    std::array<unsigned char, CRYPTO_KEYBYTES> key = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
     VideoDecrypt(const std::string &name)
     {
@@ -92,8 +115,9 @@ public:
 
     void Callback(const std_msgs::String::ConstPtr &msg)
     {
+	std::array<unsigned char, CRYPTO_NPUBBYTES> nonce = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
         /// Decrypt image string
-        auto decrypted = ascon_decrypt(std::string_view(reinterpret_cast<const char *>(&(msg->data)), sizeof(double)), Keys::associatedData, Keys::nonce, Keys::key);
+        auto decrypted = ascon_decrypt(std::string_view(reinterpret_cast<const char *>(&(msg->data)), sizeof(double)), associatedData, nonce, key);
 
         // Convert image string to OpenCV image
         std::vector<uchar> buffer(decrypted.begin(), decrypted.end());
@@ -126,7 +150,7 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(30);
 
     // Allows for subscribers to be handled asynchronously using available threads
-    ros::AsyncSpinner s(4);
+    ros::AsyncSpinner s(1);
     s.start();
 
     while (ros::ok())
